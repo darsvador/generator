@@ -1,7 +1,12 @@
 # generator (WIP)
 This crate provides a proof-of-concept proc macro attribute that allows transforming generators to state machines.
+This crate will be used as an auxiliary tool for [v2ray-rust](https://github.com/Qv2ray/v2ray-rust).
 
-## example
+## Motivation
+Rust's `async` and `await` are cool. But when you manually implement `Future`/`Stream`/`Poll`, the problem comes. Either give up a certain performance to extend the lifetime of the `future` and `poll` it or manually maintain the state machine. When the logic of `poll` is gradually complicated, the correctness of the state machine becomes more difficult to guarantee. Unstable Rust's standard library provides `generator` but it is not suitable for solving the above problems. In summary, this crate is to support using `yield/yield return` in a subset of rust's control flow. And, same as `async` and `await`, it will be compiled into state machines.
+
+
+## Example
 The following code is not a valid rust function but showing the logic of generating code.
 ````rust
 pub fn poll_read_decrypted<R>(
