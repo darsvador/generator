@@ -365,7 +365,7 @@ fn main() {
                     g();
                 }else{
                     let c=p();
-                    yield return Poll::Ready(c);
+                    yield return Poll::Ready(Ok(c));
                     q();
                 }
                 'outer: loop {
@@ -399,8 +399,8 @@ fn main() {
                     }
                 }
                 while not_done{
-                    do1();
-                    yield return Poll::Ready(c);
+                    let c=do1();
+                    yield return Poll::Ready(Ok(c));
                     do2();
                     if cond4{
                         break;
@@ -408,16 +408,12 @@ fn main() {
                 }
             }
     };
-    //println!("stmts len:{}", f.block.stmts.len());
-
     let mut cur_idx = g.add_node(start_stmt());
     for i in &f.block.stmts {
-        //println!("{:#?}", i.to_token_stream().to_string());
         cur_idx = proc_stmt(&mut g, &i, cur_idx, &mut loop_label_node_id);
     }
     let final_idx = g.add_node(final_stmt());
     g.add_cfg_edge(cur_idx, final_idx, nop_stmt());
-    //gen_state_machines(&g);
     let states = figure_out_projections(&g);
     let g2 = g.map(
         |_i, node| node.to_token_stream().to_string(),
@@ -434,7 +430,7 @@ fn main() {
     );
     f.block=gen_state_machines(&g, final_idx);
     println!("{}", f.to_token_stream().to_string());
-
+    // generate contrl flow graph
     let dot = Dot::with_config(&g2, &[]);
     let mut cfg_dot = fs::File::create("cfg.dot").unwrap();
     cfg_dot.write_all(format!("{:#?}", dot).as_bytes()).unwrap();
