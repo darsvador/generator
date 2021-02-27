@@ -338,6 +338,8 @@ fn gen_state_machines(g: &Graph<Stmt, Stmt>, final_idx: NodeIndex) -> Box<syn::B
                 } else if is_yield_or_return {
                     loops.push_str(&format!("{}={};", state_name, next_state));
                     loops.push_str(&stmt_str);
+                } else if next_state!=cur_state{
+                    loops.push_str(&format!("{}={};", state_name, next_state));
                 }
             }
         }

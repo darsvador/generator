@@ -75,7 +75,7 @@ where
     R: AsyncRead + Unpin,
 {
     'genloop: loop {
-        match state {//the state is a member of `self`
+        match state {
             _ => {
                 break 'genloop;
             }
@@ -93,10 +93,12 @@ where
             }
             2 => {
                 g();
+                state = 3;
             }
             3 => {
                 println!("Entered the outer loop");
                 println!("Entered the inner loop");
+                state = 4;
             }
             4 => {
                 state = 6;
@@ -105,8 +107,12 @@ where
                     continue 'genloop;
                 }
             }
-            5 => {}
-            6 => {}
+            5 => {
+                state = 4;
+            }
+            6 => {
+                state = 7;
+            }
             7 => {
                 state = 9;
                 if cond3 {
@@ -116,8 +122,11 @@ where
             }
             8 => {
                 println!("cond3 is true");
+                state = 7;
             }
-            9 => {}
+            9 => {
+                state = 10;
+            }
             10 => {
                 state = 14;
                 if not_done {
@@ -138,11 +147,15 @@ where
                     continue 'genloop;
                 }
             }
-            13 => {}
+            13 => {
+                state = 14;
+            }
             14 => {
                 state = 37;
             }
-            15 => {}
+            15 => {
+                state = 10;
+            }
             16 => {
                 let c = p();
                 state = 17;
@@ -150,6 +163,7 @@ where
             }
             17 => {
                 q();
+                state = 3;
             }
         }
     }
