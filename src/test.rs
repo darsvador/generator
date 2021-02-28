@@ -1,4 +1,3 @@
-
 #[test]
 fn test_generation() {
     use crate::generate_state_machines::Generator;

@@ -5,7 +5,7 @@ use generator::state_machine_generator;
 struct MyGenerator {
     my_state_1: usize,
     pub my_state_2: usize,
-    pub num:u32
+    pub num: u32,
 }
 
 #[cfg(test)]
@@ -14,7 +14,7 @@ impl MyGenerator {
         MyGenerator {
             my_state_1: 0,
             my_state_2: 0,
-            num:1
+            num: 1,
         }
     }
 
@@ -29,11 +29,11 @@ impl MyGenerator {
     }
 
     // state_name , return_default_value
-    #[state_machine_generator(my_state_2,0u32)]
-    pub fn get_odd(&mut self)->u32{
-        loop{
+    #[state_machine_generator(my_state_2, 0u32)]
+    pub fn get_odd(&mut self) -> u32 {
+        loop {
             co_yield(self.num);
-            self.num+=2;
+            self.num += 2;
         }
     }
 }
@@ -44,7 +44,7 @@ fn test_generator_proc_macro() {
     gen.test_simple(); // print Hello,
     gen.test_simple(); // print Generator
     gen.test_simple(); // print nothing
-    for i in (1u32..1000).step_by(2){
-        assert_eq!(gen.get_odd(),i);
+    for i in (1u32..1000).step_by(2) {
+        assert_eq!(gen.get_odd(), i);
     }
 }

@@ -70,10 +70,10 @@ pub(crate) fn is_yield_or_return(stmt: &syn::Stmt) -> bool {
                 }
             }
         }
-        Stmt::Semi(Expr::Return(_),_)=>{
+        Stmt::Semi(Expr::Return(_), _) => {
             return true;
         }
-        Stmt::Expr(Expr::Return(_))=>{
+        Stmt::Expr(Expr::Return(_)) => {
             return true;
         }
         _ => {}

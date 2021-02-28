@@ -37,7 +37,7 @@ impl Generator {
         &mut self,
         mut function: ItemFn,
         state_name: &str,
-        return_default_value:&str
+        return_default_value: &str,
     ) -> proc_macro2::TokenStream {
         let mut cur_idx = 0.into();
         let mut loop_label_node_id = Vec::new();
@@ -49,7 +49,7 @@ impl Generator {
         self.cfg_graph
             .add_cfg_edge(cur_idx, self.final_node_idx, nop_stmt());
         self.state_projections = self.cfg_graph.figure_out_projections();
-        function.block = self.gen_state_machines(state_name,return_default_value);
+        function.block = self.gen_state_machines(state_name, return_default_value);
         function.to_token_stream()
     }
 
@@ -74,7 +74,7 @@ impl Generator {
         )
     }
 
-    fn gen_state_machines(&self, state_name: &str,return_default_value:&str) -> Box<syn::Block> {
+    fn gen_state_machines(&self, state_name: &str, return_default_value: &str) -> Box<syn::Block> {
         let state_name = format!("self.{}", state_name);
         let else_stmt = String::from("else_stmt");
         let project_to_state: &HashMap<usize, usize> = &self.state_projections;
@@ -126,10 +126,13 @@ impl Generator {
                 }
             }
         }
-        if return_default_value.is_empty(){
+        if return_default_value.is_empty() {
             loops.push_str(&format!("}} _=>{{ break 'genloop;}} }}}}}}"));
         } else {
-            loops.push_str(&format!("}} _=>{{ break 'genloop;}} }}}} return {};}}",return_default_value));
+            loops.push_str(&format!(
+                "}} _=>{{ break 'genloop;}} }}}} return {};}}",
+                return_default_value
+            ));
         }
         Box::new(syn::parse_str(&loops).unwrap())
     }
