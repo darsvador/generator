@@ -11,3 +11,6 @@ syn = {version="1.0",features=["full","visit-mut","extra-traits"]}
 quote = "1.0"
 petgraph = "0.5.1"
 proc-macro2 = "1.0"
+
+[lib]
+proc-macro = true
