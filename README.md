@@ -7,6 +7,62 @@ Rust's `async` and `await` are cool. But when you manually implement `Future`/`S
 
 
 ## Example
+
+````rust
+extern crate generator;
+use generator::state_machine_generator;
+
+#[cfg(test)]
+struct MyGenerator {
+    my_state_1: usize,
+    pub my_state_2: usize,
+    pub num: u32,
+}
+
+#[cfg(test)]
+impl MyGenerator {
+    pub fn new() -> MyGenerator {
+        MyGenerator {
+            my_state_1: 0,
+            my_state_2: 0,
+            num: 1,
+        }
+    }
+
+    #[state_machine_generator(my_state_1)]
+    pub fn test_simple(&mut self) {
+        loop {
+            println!("Hello, ");
+            co_yield;
+            println!("Generator");
+            return;
+        }
+    }
+
+    // state_name , return_default_value
+    #[state_machine_generator(my_state_2, 0u32)]
+    pub fn get_odd(&mut self) -> u32 {
+        loop {
+            co_yield(self.num);
+            self.num += 2;
+        }
+    }
+}
+
+#[test]
+fn test_generator_proc_macro() {
+    let mut gen = MyGenerator::new();
+    gen.test_simple(); // print Hello,
+    gen.test_simple(); // print Generator
+    gen.test_simple(); // print nothing
+    for i in (1u32..1000).step_by(2) {
+        assert_eq!(gen.get_odd(), i);
+    }
+}
+````
+
+
+## Explanation
 The following code is not a valid rust function but showing the logic of generating code.
 ````rust
 pub fn poll_read_decrypted<R>(
@@ -18,13 +74,15 @@ pub fn poll_read_decrypted<R>(
     where
     R: AsyncRead + Unpin,
     {
+        co_yield;
+        co_return(Poll::Pending);
         if cond1{
             f();
-            yield return Poll::Pending;
+            co_return(Poll::Pending);
             g();
         }else{
             let c=p();
-            yield return Poll::Ready(Ok(c));
+            co_return(Poll::Ready(Ok(c)));
             q();
         }
         'outer: loop {
@@ -44,7 +102,7 @@ pub fn poll_read_decrypted<R>(
         }
         loop{
             if cond2{
-                continue;
+                return Poll::Ready();
             } else{
                 break;
             }
@@ -59,7 +117,7 @@ pub fn poll_read_decrypted<R>(
         }
         while not_done{
             let c=do1();
-            yield return Poll::Ready(Ok(c));
+            co_return(Poll::Ready(Ok(c)));
             do2();
             if cond4{
                 break;
@@ -80,100 +138,108 @@ where
     R: AsyncRead + Unpin,
 {
     'genloop: loop {
-        match state {
-            _ => {
+        match self.state {
+            40 => {
                 break 'genloop;
             }
             0 => {
-                state = 16;
-                if cond1 {
-                    state = 1;
-                    continue 'genloop;
-                }
+                self.state = 1;
+                return;
             }
             1 => {
-                f();
-                state = 2;
-                return Poll::Pending;
-            }
-            2 => {
-                g();
-                state = 3;
+                self.state = 2;
+                if cond1 {
+                    self.state = 3;
+                    continue 'genloop;
+                }
             }
             3 => {
-                println!("Entered the outer loop");
-                println!("Entered the inner loop");
-                state = 4;
+                f();
+                self.state = 4;
+                return Poll::Pending;
             }
             4 => {
-                state = 6;
-                if cond2 {
-                    state = 5;
-                    continue 'genloop;
-                }
+                g();
+                self.state = 5;
             }
             5 => {
-                state = 4;
+                println!("Entered the outer loop");
+                println!("Entered the inner loop");
+                self.state = 8;
+                if cond2 {
+                    self.state = 6;
+                    continue 'genloop;
+                }
             }
             6 => {
-                state = 7;
+                self.state = 7;
+                return Poll::Ready();
             }
             7 => {
-                state = 9;
-                if cond3 {
-                    state = 8;
-                    continue 'genloop;
-                }
+                self.state = 40;
             }
             8 => {
-                println!("cond3 is true");
-                state = 7;
+                self.state = 9;
             }
             9 => {
-                state = 10;
-            }
-            10 => {
-                state = 14;
-                if not_done {
-                    state = 11;
+                self.state = 11;
+                if cond3 {
+                    self.state = 10;
                     continue 'genloop;
                 }
             }
+            10 => {
+                println!("cond3 is true");
+                self.state = 9;
+            }
             11 => {
-                let c = do1();
-                state = 12;
-                return Poll::Ready(Ok(c));
+                self.state = 12;
             }
             12 => {
-                do2();
-                state = 15;
-                if cond4 {
-                    state = 13;
+                self.state = 16;
+                if not_done {
+                    self.state = 13;
                     continue 'genloop;
                 }
             }
             13 => {
-                state = 14;
-            }
-            14 => {
-                state = 37;
-            }
-            15 => {
-                state = 10;
-            }
-            16 => {
-                let c = p();
-                state = 17;
+                let c = do1();
+                self.state = 14;
                 return Poll::Ready(Ok(c));
             }
+            14 => {
+                do2();
+                self.state = 17;
+                if cond4 {
+                    self.state = 15;
+                    continue 'genloop;
+                }
+            }
+            15 => {
+                self.state = 16;
+            }
+            16 => {
+                self.state = 7;
+            }
             17 => {
+                self.state = 12;
+            }
+            2 => {
+                let c = p();
+                self.state = 18;
+                return Poll::Ready(Ok(c));
+            }
+            18 => {
                 q();
-                state = 3;
+                self.state = 5;
+            }
+            _ => {
+                break 'genloop;
             }
         }
     }
+    return Poll::Pending;
 }
-
 ````
 
 The CFG (control flow graph) of above code is
