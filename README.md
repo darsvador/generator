@@ -43,8 +43,10 @@ impl MyGenerator {
     #[state_machine_generator(my_state_2, 0u32)]
     pub fn get_odd(&mut self) -> u32 {
         loop {
-            co_yield(self.num);
-            self.num += 2;
+            if self.num % 2 == 1 {
+                co_yield(self.num);
+            }
+            self.num += 1;
         }
     }
 }
