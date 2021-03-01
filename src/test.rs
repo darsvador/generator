@@ -1,12 +1,11 @@
-
 #[test]
 fn test_generation() {
-    use syn::parse_quote;
-    use syn::ItemFn;
     use crate::generate_state_machines::Generator;
     use petgraph::dot::Dot;
     use std::fs;
     use std::io::Write;
+    use syn::parse_quote;
+    use syn::ItemFn;
     let f: ItemFn = parse_quote! {
         pub fn poll_read_decrypted<R>(
             &mut self,
@@ -72,7 +71,7 @@ fn test_generation() {
     println!(
         "{}",
         generator
-            .gen_state_machines_tokenstream(f, "state","Poll::Pending")
+            .gen_state_machines_tokenstream(f, "state", "Poll::Pending")
             .to_string()
     );
     let cfg_graph = generator.get_cfg_graph();
@@ -87,9 +86,9 @@ fn test_generation() {
 
 #[test]
 fn test_is_co_yield_or_co_return() {
+    use crate::stmt::is_yield_or_return;
     use syn::parse_quote;
     use syn::ItemFn;
-    use crate::stmt::is_yield_or_return;
     fn co_yield() -> syn::Stmt {
         let nop: ItemFn = parse_quote! {fn nop(){co_yield;}};
         return nop.block.stmts[0].clone();
