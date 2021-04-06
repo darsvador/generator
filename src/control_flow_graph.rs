@@ -174,9 +174,15 @@ impl CFG for Graph<Stmt, Stmt> {
                 }
             }
             Expr::While(e) => {
+                let before_enter_while_idx = self.add_node(nop_stmt());
                 let true_st_idx = self.add_node(start_node_stmt());
                 let false_st_idx = self.add_node(end_node_stmt());
-                self.add_cfg_edge(cur_idx, true_st_idx, Stmt::Expr(e.cond.as_ref().clone()));
+                self.add_cfg_edge(cur_idx, before_enter_while_idx, nop_stmt());
+                self.add_cfg_edge(
+                    before_enter_while_idx,
+                    true_st_idx,
+                    Stmt::Expr(e.cond.as_ref().clone()),
+                );
                 let mut true_end_idx = true_st_idx;
                 if let Some(l) = &e.label {
                     let label = l.name.to_token_stream().to_string();
@@ -192,8 +198,8 @@ impl CFG for Graph<Stmt, Stmt> {
                     true_end_idx =
                         self.proc_stmt(stmt, true_end_idx, final_idx, loop_label_node_id);
                 }
-                self.add_cfg_edge(true_end_idx, cur_idx, nop_stmt());
-                self.add_cfg_edge(cur_idx, false_st_idx, else_stmt());
+                self.add_cfg_edge(true_end_idx, before_enter_while_idx, nop_stmt());
+                self.add_cfg_edge(before_enter_while_idx, false_st_idx, else_stmt());
                 loop_label_node_id.pop();
                 ret_idx = false_st_idx;
             }

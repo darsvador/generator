@@ -92,7 +92,8 @@ impl Generator {
                 discovered.insert(cur_state.clone());
                 loops.push_str(&format!("}}\n{}=>{{", cur_state));
             }
-            if !self.predefined_stmt.contains(&stmt_str) && !is_yield_or_return {
+            let is_predefined_stmt: bool = self.predefined_stmt.contains(&stmt_str);
+            if !is_predefined_stmt && !is_yield_or_return {
                 loops.push_str(&stmt_str);
             } else if node == self.final_node_idx {
                 // out of the loop
@@ -106,6 +107,7 @@ impl Generator {
                 if let Some(e) = self.cfg_graph.find_edge(node, succ) {
                     let next_state = project_to_state.get(&succ.index()).unwrap();
                     if self.cfg_graph[e] != nop_stmt() {
+                        assert_ne!(next_state, cur_state);
                         let cond = self.cfg_graph[e].to_token_stream().to_string();
                         if cond != else_stmt {
                             // if cond{state=next_state;continue 'genloop;}

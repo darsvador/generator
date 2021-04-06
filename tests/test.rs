@@ -6,6 +6,7 @@ struct MyGenerator {
     my_state_1: usize,
     pub my_state_2: usize,
     pub num: u32,
+    pub num1: u32,
 }
 
 #[cfg(test)]
@@ -15,6 +16,7 @@ impl MyGenerator {
             my_state_1: 0,
             my_state_2: 0,
             num: 0,
+            num1: 0,
         }
     }
 
@@ -22,8 +24,12 @@ impl MyGenerator {
     pub fn test_simple(&mut self) {
         loop {
             println!("Hello, ");
-            co_yield;
-            println!("Generator");
+            //co_yield;
+            while self.num1 < 99 {
+                println!("Generator{}", self.num1);
+                self.num1 += 1;
+                co_yield;
+            }
             return;
         }
     }
@@ -44,8 +50,11 @@ impl MyGenerator {
 fn test_generator_proc_macro() {
     let mut gen = MyGenerator::new();
     gen.test_simple(); // print Hello,
-    gen.test_simple(); // print Generator
+    for _ in 0..200 {
+        gen.test_simple(); // only print 99 times `Generator`
+    }
     gen.test_simple(); // print nothing
+    assert_eq!(gen.num1, 99);
     for i in (1u32..1000).step_by(2) {
         assert_eq!(gen.get_odd(), i);
     }
