@@ -2,20 +2,18 @@ use crate::stmt::{
     else_stmt, end_node_stmt, final_stmt, is_yield_or_return, nop_stmt, semi_token,
     start_node_stmt, start_stmt,
 };
-use petgraph::graph::NodeIndex;
-use petgraph::visit::Dfs;
-use petgraph::Graph;
 use quote::ToTokens;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use syn::Expr;
 use syn::Stmt;
+
 pub struct LoopLabel {
-    pub start_idx: NodeIndex,
-    pub end_idx: NodeIndex,
+    pub start_idx: u32,
+    pub end_idx: u32,
     pub name: String,
 }
 impl LoopLabel {
-    fn new(start_idx: NodeIndex, end_idx: NodeIndex, name: String) -> LoopLabel {
+    pub(crate) fn new(start_idx: u32, end_idx: u32, name: String) -> LoopLabel {
         LoopLabel {
             start_idx,
             end_idx,
@@ -25,41 +23,103 @@ impl LoopLabel {
 }
 
 pub trait CFG {
-    fn new_cfg_graph() -> (Self, NodeIndex)
+    fn new_cfg_graph() -> (Self, u32)
     where
         Self: Sized;
-    fn add_cfg_edge(&mut self, a: NodeIndex, b: NodeIndex, stmt: Stmt);
+    fn add_cfg_edge(&mut self, a: u32, b: u32, stmt: Stmt);
     fn proc_stmt(
         &mut self,
         stmt: &syn::Stmt,
-        cur_idx: NodeIndex,
-        final_idx: NodeIndex,
+        cur_idx: u32,
+        final_idx: u32,
         loop_label_node_id: &mut Vec<LoopLabel>,
-    ) -> NodeIndex;
+    ) -> u32;
     fn proc_expr(
         &mut self,
         expr: &syn::Expr,
-        cur_idx: NodeIndex,
-        final_idx: NodeIndex,
+        cur_idx: u32,
+        final_idx: u32,
         loop_label_node_id: &mut Vec<LoopLabel>,
         is_semi: bool,
-    ) -> NodeIndex;
+    ) -> u32;
     fn figure_out_projections(&self) -> HashMap<usize, usize>;
 }
-impl CFG for Graph<Stmt, Stmt> {
-    fn new_cfg_graph() -> (Self, NodeIndex) {
-        let mut g = Graph::<Stmt, Stmt>::new();
+
+pub struct Node {
+    pub(crate) val: Stmt,
+    pub(crate) h: u32,
+}
+
+pub struct InDegree {
+    d: u32,
+    input_edges_contain_not_no_nop_stmt: bool,
+}
+
+impl InDegree {
+    pub fn new() -> InDegree {
+        InDegree {
+            d: 0,
+            input_edges_contain_not_no_nop_stmt: false,
+        }
+    }
+}
+
+pub struct CFGraph {
+    pub(crate) nodes: Vec<Node>,
+    pub(crate) edges: Vec<Stmt>,
+    pub(crate) e: Vec<u32>,
+    pub(crate) ne: Vec<u32>,
+    pub(crate) in_degree: Vec<InDegree>,
+}
+
+impl CFGraph {
+    pub fn new() -> CFGraph {
+        CFGraph {
+            nodes: vec![],
+            edges: vec![],
+            e: vec![],
+            ne: vec![],
+            in_degree: vec![],
+        }
+    }
+    pub fn add_node(&mut self, node: Stmt) -> u32 {
+        let tmp = self.nodes.len();
+        self.nodes.push(Node {
+            val: node,
+            h: u32::MAX,
+        });
+        self.in_degree.push(InDegree::new());
+        tmp as u32
+    }
+
+    pub fn add_edge(&mut self, start_node: u32, end_node: u32, weight: Stmt) -> u32 {
+        if !(start_node < self.nodes.len() as u32 && end_node < self.nodes.len() as u32) {
+            return u32::MAX;
+        }
+        let tmp = self.edges.len() as u32;
+        self.e.push(end_node);
+        self.ne.push(self.nodes[start_node as usize].h);
+        self.nodes[start_node as usize].h = tmp;
+        self.in_degree[end_node as usize].d += 1;
+        if weight != nop_stmt() {
+            self.in_degree[end_node as usize].input_edges_contain_not_no_nop_stmt = true;
+        }
+        self.edges.push(weight);
+        tmp
+    }
+}
+
+impl CFG for CFGraph {
+    fn new_cfg_graph() -> (Self, u32) {
+        let mut g = CFGraph::new();
         g.add_node(start_stmt());
         let final_idx = g.add_node(final_stmt());
         (g, final_idx)
     }
 
-    fn add_cfg_edge(&mut self, a: NodeIndex, b: NodeIndex, stmt: Stmt) {
-        if NodeIndex::end() != a && NodeIndex::end() != b {
-            let mut incoming_neighbors =
-                self.neighbors_directed(a, petgraph::EdgeDirection::Incoming);
-            // 0 is start statement
-            if incoming_neighbors.next().is_some() || a == 0.into() {
+    fn add_cfg_edge(&mut self, a: u32, b: u32, stmt: Stmt) {
+        if u32::MAX != a && u32::MAX != b {
+            if a == 0 || self.in_degree[a as usize].d != 0 {
                 self.add_edge(a, b, stmt);
             }
         }
@@ -67,10 +127,10 @@ impl CFG for Graph<Stmt, Stmt> {
     fn proc_stmt(
         &mut self,
         stmt: &syn::Stmt,
-        cur_idx: NodeIndex,
-        final_idx: NodeIndex,
+        cur_idx: u32,
+        final_idx: u32,
         loop_label_node_id: &mut Vec<LoopLabel>,
-    ) -> NodeIndex {
+    ) -> u32 {
         match stmt {
             Stmt::Local(_) => {
                 let idx = self.add_node(stmt.clone());
@@ -92,12 +152,12 @@ impl CFG for Graph<Stmt, Stmt> {
     fn proc_expr(
         &mut self,
         expr: &syn::Expr,
-        cur_idx: NodeIndex,
-        final_idx: NodeIndex,
+        cur_idx: u32,
+        final_idx: u32,
         loop_label_node_id: &mut Vec<LoopLabel>,
         is_semi: bool,
-    ) -> NodeIndex {
-        let mut ret_idx = NodeIndex::end();
+    ) -> u32 {
+        let mut ret_idx = u32::MAX;
         match expr {
             Expr::If(e) => {
                 let end_idx = self.add_node(end_node_stmt());
@@ -239,50 +299,50 @@ impl CFG for Graph<Stmt, Stmt> {
     fn figure_out_projections(&self) -> HashMap<usize, usize> {
         let mut project_to_state: HashMap<usize, usize> = HashMap::new();
         let mut global_state = 0usize;
-        let mut dfs = Dfs::new(self, 0.into());
+        let mut q = Vec::new();
         // project to a state
         // indegree >1
         // yield node's outgoing node
         // incoming edges have a edge which is not 'nop'
         project_to_state.insert(0, global_state);
-        while let Some(node) = dfs.next(self) {
-            let mut indegree = 0;
-            let mut in_edge_not_nop = false;
-            let mut parent_idx = usize::MAX;
-            for succ in self.neighbors_directed(node, petgraph::EdgeDirection::Incoming) {
-                indegree += 1;
-                parent_idx = succ.index();
-                if let Some(e) = self.find_edge(succ, node) {
-                    if self[e] != nop_stmt() {
-                        in_edge_not_nop = true;
-                    }
-                }
-            }
-            if indegree == 0 {
-                // dead node or start_stmt node(0)
-                continue;
-            }
-            if in_edge_not_nop || indegree > 1 {
-                if !project_to_state.contains_key(&node.index()) {
-                    global_state += 1;
-                    project_to_state.insert(node.index(), global_state);
-                }
-            } else if indegree == 1 {
-                if !project_to_state.contains_key(&node.index()) {
-                    project_to_state.insert(
-                        node.index(),
-                        project_to_state.get(&parent_idx).unwrap().clone(),
-                    );
-                }
-            }
-            let is_yield_or_return = is_yield_or_return(&self[node]);
-            if is_yield_or_return {
-                for succ in self.neighbors(node) {
-                    if !project_to_state.contains_key(&succ.index()) {
+        q.push((0u32, 0u32));
+        let mut visit_set = HashSet::new();
+        while let Some((cur, par)) = q.pop() {
+            if !visit_set.contains(&cur) {
+                visit_set.insert(cur);
+                let cur = cur as usize;
+                let par = par as usize;
+                if self.in_degree[cur].d > 1
+                    || self.in_degree[cur].input_edges_contain_not_no_nop_stmt
+                {
+                    if !project_to_state.contains_key(&cur) {
                         global_state += 1;
-                        project_to_state.insert(succ.index(), global_state);
+                        project_to_state.insert(cur, global_state);
+                    }
+                } else if self.in_degree[cur].d == 1 {
+                    if !project_to_state.contains_key(&cur) {
+                        project_to_state.insert(cur, project_to_state.get(&par).unwrap().clone());
                     }
                 }
+                let is_yield_or_return = is_yield_or_return(&self.nodes[cur].val);
+                let mut i = self.nodes[cur].h as usize;
+                while i as u32 != u32::MAX {
+                    let next_node = self.e[i] as usize;
+                    if is_yield_or_return && !project_to_state.contains_key(&next_node) {
+                        global_state += 1;
+                        project_to_state.insert(next_node, global_state);
+                    }
+                    q.push((next_node as u32, cur as u32));
+                    i = self.ne[i] as usize;
+                }
+            }
+            let mut i = self.nodes[cur as usize].h as usize;
+            while i as u32 != u32::MAX {
+                let next_node = self.e[i];
+                if !visit_set.contains(&next_node) {
+                    q.push((next_node as u32, cur as u32));
+                }
+                i = self.ne[i] as usize;
             }
         }
         project_to_state

@@ -1,7 +1,6 @@
 #[test]
 fn test_generation() {
     use crate::generate_state_machines::Generator;
-    use petgraph::dot::Dot;
     use std::fs;
     use std::io::Write;
     use syn::parse_quote;
@@ -74,14 +73,9 @@ fn test_generation() {
             .gen_state_machines_tokenstream(f, "state", "Poll::Pending")
             .to_string()
     );
-    let cfg_graph = generator.get_cfg_graph();
     let cfg_state_graph = generator.get_cfg_state_graph();
-    let dot = Dot::with_config(&cfg_graph, &[]);
-    let mut cfg_dot = fs::File::create("cfg.dot").unwrap();
-    cfg_dot.write_all(format!("{:#?}", dot).as_bytes()).unwrap();
-    let dot = Dot::with_config(&cfg_state_graph, &[]);
     let mut cfg_dot = fs::File::create("cfg_state.dot").unwrap();
-    cfg_dot.write_all(format!("{:#?}", dot).as_bytes()).unwrap();
+    cfg_dot.write_all(cfg_state_graph.as_bytes()).unwrap();
 }
 
 #[test]
