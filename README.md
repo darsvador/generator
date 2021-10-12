@@ -1,4 +1,4 @@
-# generator (WIP)
+# generator
 This crate provides a proof-of-concept proc macro attribute that allows transforming generators to state machines.
 This crate will be used as an auxiliary tool for [v2ray-rust](https://github.com/Qv2ray/v2ray-rust).
 
@@ -245,5 +245,4 @@ where
 ````
 
 The CFG (control flow graph) of above code is
-![cfg](./images/cfg.dot.png)
 ![cfg_state](./images/cfg_state.dot.png)
