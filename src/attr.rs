@@ -17,7 +17,7 @@ impl FsaAttr{
         if let Some(n)=&self.state{
             return n.to_token_stream().to_string();
         }
-        String::from("this.state")
+        String::from("self.state")
     }
 
     pub fn get_ret_val(&self)->String{
