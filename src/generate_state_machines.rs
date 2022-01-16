@@ -46,6 +46,7 @@ impl Generator {
         }
         self.cfg_graph
             .add_cfg_edge(cur_idx, self.final_node_idx, nop_stmt());
+        println!("add cfg edge successful!");
 
         self.state_projections = self.cfg_graph.figure_out_projections();
         function.block = self.gen_state_machines(state_name, return_default_value);
@@ -94,7 +95,7 @@ impl Generator {
     }
 
     fn gen_state_machines(&self, state_name: &str, return_default_value: &str) -> Box<syn::Block> {
-        let state_name = format!("self.{}", state_name);
+        let state_name = format!("{}", state_name);
         let else_stmt = String::from("else_stmt");
         let project_to_state: &HashMap<usize, usize> = &self.state_projections;
         let mut discovered: HashSet<usize> = HashSet::new();
