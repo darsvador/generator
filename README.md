@@ -10,8 +10,7 @@ Rust's `async` and `await` are cool. But when you manually implement `Future`/`S
 ## Example
 
 ````rust
-extern crate generator;
-use generator::state_machine_generator;
+use gentian::gentian;
 
 #[cfg(test)]
 struct MyGenerator {
@@ -32,8 +31,8 @@ impl MyGenerator {
         }
     }
 
-    #[state_machine_generator]
-    #[fsa_attr(state=self.my_state_1)]
+    #[gentian]
+    #[gentian_attr(state=self.my_state_1)]
     pub fn test_simple(&mut self) {
         loop {
             println!("Hello, ");
@@ -48,8 +47,8 @@ impl MyGenerator {
     }
 
     // state_name , return_default_value
-    #[state_machine_generator]
-    #[fsa_attr(state=self.my_state_2,ret_val=0u32)]
+    #[gentian]
+    #[gentian_attr(state=self.my_state_2,ret_val=0u32)]
     pub fn get_odd(&mut self) -> u32 {
         loop {
             if self.num % 2 == 1 {

@@ -46,7 +46,7 @@ impl Generator {
         }
         self.cfg_graph
             .add_cfg_edge(cur_idx, self.final_node_idx, nop_stmt());
-        println!("add cfg edge successful!");
+        println!("[gentian] build control flow graph successful!");
 
         self.state_projections = self.cfg_graph.figure_out_projections();
         function.block = self.gen_state_machines(state_name, return_default_value);
