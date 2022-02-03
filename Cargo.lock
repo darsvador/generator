@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "generator"
+name = "gentian"
 version = "0.1.0"
 dependencies = [
  "bae",

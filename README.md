@@ -1,4 +1,5 @@
-# generator
+# gentian
+
 This crate provides a proof-of-concept proc macro attribute that allows transforming generators to state machines.
 This crate will be used as an auxiliary tool for [v2ray-rust](https://github.com/Qv2ray/v2ray-rust).
 

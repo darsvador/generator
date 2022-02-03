@@ -6,7 +6,6 @@ mod attr;
 
 use generate_state_machines::Generator;
 use proc_macro::TokenStream;
-use quote::ToTokens;
 use syn::parse_macro_input;
 use syn::ItemFn;
 use crate::attr::FsaAttr;
