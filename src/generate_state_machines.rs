@@ -141,10 +141,16 @@ impl Generator {
         if !check_node_stmt(node) {
             return state;
         }
+        let mut set = HashSet::new();
+        set.insert(node);
+        let first_state = state;
         'outer: loop {
             let i = self.cfg_graph.nodes[node].h;
             while i != u32::MAX {
                 let next_node = self.cfg_graph.e[i as usize] as usize;
+                if !set.insert(next_node) {
+                    return first_state;
+                }
                 if check_node_stmt(next_node) && check_edge_stmt(i as usize) {
                     node = next_node;
                     state = *self.state_projections.get(&node).unwrap();
