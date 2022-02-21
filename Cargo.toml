@@ -1,9 +1,9 @@
 [package]
 name = "gentian"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["darsvador"]
 edition = "2018"
-exclude = [	"images/*" , "cfg_state.dot"]
+exclude = [	"images/*" , "cfg_state.dot", "state_machines.rs"]
 readme = "./README.md"
 categories = ["asynchronous", "rust-patterns"]
 repository = "https://github.com/darsvador/generator"

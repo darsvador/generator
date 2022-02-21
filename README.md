@@ -152,100 +152,89 @@ where
     R: AsyncRead + Unpin,
 {
     'genloop: loop {
-        match self.state {
-            40 => {
+        match state {
+            50 => {
                 break 'genloop;
             }
             0 => {
-                self.state = 1;
+                state = 1;
                 return;
             }
             1 => {
-                self.state = 2;
+                state = 2;
+                return Poll::Pending;
+            }
+            2 => {
+                state = 18;
                 if cond1 {
-                    self.state = 3;
+                    state = 3;
                     continue 'genloop;
                 }
             }
             3 => {
                 f();
-                self.state = 4;
+                state = 4;
                 return Poll::Pending;
             }
             4 => {
                 g();
-                self.state = 5;
+                state = 5;
             }
             5 => {
                 println!("Entered the outer loop");
                 println!("Entered the inner loop");
-                self.state = 8;
+                state = 9;
                 if cond2 {
-                    self.state = 6;
+                    state = 6;
                     continue 'genloop;
                 }
             }
             6 => {
-                self.state = 7;
+                state = 7;
                 return Poll::Ready();
             }
             7 => {
-                self.state = 40;
-            }
-            8 => {
-                self.state = 9;
+                state = 50;
             }
             9 => {
-                self.state = 11;
+                state = 12;
                 if cond3 {
-                    self.state = 10;
+                    state = 10;
                     continue 'genloop;
                 }
             }
             10 => {
                 println!("cond3 is true");
-                self.state = 9;
-            }
-            11 => {
-                self.state = 12;
+                state = 9;
             }
             12 => {
-                self.state = 16;
+                state = 7;
                 if not_done {
-                    self.state = 13;
+                    state = 13;
                     continue 'genloop;
                 }
             }
             13 => {
                 let c = do1();
-                self.state = 14;
+                state = 14;
                 return Poll::Ready(Ok(c));
             }
             14 => {
                 do2();
-                self.state = 17;
+                state = 12;
                 if cond4 {
-                    self.state = 15;
+                    state = 7;
                     continue 'genloop;
                 }
             }
-            15 => {
-                self.state = 16;
-            }
-            16 => {
-                self.state = 7;
-            }
-            17 => {
-                self.state = 12;
-            }
-            2 => {
+            18 => {
                 let c = p();
-                self.state = 18;
+                state = 19;
                 return Poll::Ready(Ok(c));
             }
-            18 => {
+            19 => {
                 q();
-                self.state = 5;
+                state = 5;
             }
             _ => {
                 break 'genloop;
