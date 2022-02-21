@@ -72,6 +72,10 @@ fn test_generation() {
         .to_string();
     let mut rs = fs::File::create("state_machines.rs").unwrap();
     rs.write_all(state_machine_code.as_bytes()).unwrap();
+    let cfg_state_graph = generator.get_cfg_state_graph();
+    let mut cfg_dot = fs::File::create("cfg_state.dot").unwrap();
+    cfg_dot.write_all(cfg_state_graph.as_bytes()).unwrap();
+    cfg_dot.flush().unwrap();
     if cfg!(target_os = "linux") {
         use std::path::Path;
         use std::process::Command;
@@ -81,11 +85,20 @@ fn test_generation() {
                 .output()
                 .expect("failed to run rustfmt");
         }
+        if Path::new("/usr/bin/dot").exists() {
+            let output = Command::new("dot")
+                .args([
+                    "-T",
+                    "png",
+                    "-o",
+                    "images/cfg_state.dot.png",
+                    "cfg_state.dot",
+                ])
+                .output()
+                .expect("failed to run graphviz dot");
+            std::io::stdout().write_all(&output.stdout).unwrap();
+        }
     }
-
-    let cfg_state_graph = generator.get_cfg_state_graph();
-    let mut cfg_dot = fs::File::create("cfg_state.dot").unwrap();
-    cfg_dot.write_all(cfg_state_graph.as_bytes()).unwrap();
 }
 
 #[test]

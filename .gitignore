@@ -1,2 +1,4 @@
 /target
 /.idea
+state_machines.rs
+cfg_state.dot

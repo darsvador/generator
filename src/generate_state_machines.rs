@@ -192,11 +192,7 @@ impl Generator {
                         loops.push_str(&stmt_str);
                     } else if node as u32 == self.final_node_idx {
                         // out of the loop
-                        loops.push_str(&format!(
-                            "{}={};",
-                            state_name,
-                            self.cfg_graph.nodes.len() + 1
-                        ));
+                        loops.push_str(&format!("break 'genloop;",));
                     }
                     let mut i = self.cfg_graph.nodes[node].h;
                     while i != u32::MAX {
