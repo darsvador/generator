@@ -12,6 +12,7 @@ pub struct Generator {
     final_node_idx: u32,
     state_projections: HashMap<usize, usize>,
     predefined_stmt: HashSet<String>,
+    unused_states: HashSet<usize>,
 }
 
 impl Generator {
@@ -28,6 +29,7 @@ impl Generator {
             final_node_idx: final_idx,
             state_projections: HashMap::new(),
             predefined_stmt,
+            unused_states: HashSet::new(),
         }
     }
 
@@ -48,7 +50,7 @@ impl Generator {
             .add_cfg_edge(cur_idx, self.final_node_idx, nop_stmt());
         println!("[gentian] build control flow graph successful!");
 
-        self.state_projections = self.cfg_graph.figure_out_projections();
+        self.build_state_projections();
         function.block = self.gen_state_machines(state_name, return_default_value);
         function.to_token_stream()
     }
@@ -94,6 +96,54 @@ impl Generator {
         dot_string
     }
 
+    fn build_state_projections(&mut self) {
+        self.state_projections = self.cfg_graph.figure_out_projections();
+        let mut unused_states = HashSet::new();
+        let mut state_projections = self.state_projections.clone();
+        for (_, state) in state_projections.iter() {
+            unused_states.insert(*state);
+        }
+        for (node, state) in state_projections.iter_mut() {
+            *state = self.eliminate_single_state(*node, *state);
+        }
+        for (_, state) in state_projections.iter() {
+            unused_states.remove(state);
+        }
+        self.state_projections = state_projections;
+        self.unused_states = unused_states;
+    }
+
+    fn eliminate_single_state(&self, mut node: usize, mut state: usize) -> usize {
+        let check_node_stmt = |v: usize| {
+            let tmp = self.cfg_graph.nodes[v].val.to_token_stream().to_string();
+            self.predefined_stmt.contains(&tmp)
+        };
+        let check_edge_stmt = |v: usize| {
+            let tmp = self.cfg_graph.edges[v].to_token_stream().to_string();
+            self.predefined_stmt.contains(&tmp)
+        };
+        if !check_node_stmt(node) {
+            return state;
+        }
+        'outer: loop {
+            let i = self.cfg_graph.nodes[node].h;
+            while i != u32::MAX {
+                let next_node = self.cfg_graph.e[i as usize] as usize;
+                if check_node_stmt(next_node) && check_edge_stmt(i as usize) {
+                    node = next_node;
+                    state = *self.state_projections.get(&node).unwrap();
+                    break;
+                } else {
+                    break 'outer;
+                }
+            }
+            if i == u32::MAX {
+                break;
+            }
+        }
+        state
+    }
+
     fn gen_state_machines(&self, state_name: &str, return_default_value: &str) -> Box<syn::Block> {
         let state_name = format!("{}", state_name);
         let else_stmt = String::from("else_stmt");
@@ -114,46 +164,57 @@ impl Generator {
                 let (stmt_str, is_yield_or_return) =
                     transform_stmt_to_string(&self.cfg_graph.nodes[node].val);
                 let cur_state = project_to_state.get(&node).unwrap();
-                if !discovered.contains(&cur_state) {
-                    discovered.insert(cur_state.clone());
-                    loops.push_str(&format!("}}\n{}=>{{", cur_state));
+                let is_unused_state = self.unused_states.contains(cur_state);
+                if discovered.insert(*cur_state) {
+                    if !is_unused_state {
+                        loops.push_str(&format!("}}\n{}=>{{", cur_state));
+                    }
                 }
-                let is_predefined_stmt: bool = self.predefined_stmt.contains(&stmt_str);
-                if !is_predefined_stmt && !is_yield_or_return {
-                    loops.push_str(&stmt_str);
-                } else if node as u32 == self.final_node_idx {
-                    // out of the loop
-                    loops.push_str(&format!(
-                        "{}={};",
-                        state_name,
-                        self.cfg_graph.nodes.len() + 1
-                    ));
-                }
-                let mut i = self.cfg_graph.nodes[node].h;
-                while i != u32::MAX {
-                    let next_node = self.cfg_graph.e[i as usize] as usize;
-                    let e = self.cfg_graph.edges[i as usize].clone();
-                    let next_state = project_to_state.get(&next_node).unwrap();
-                    if e != nop_stmt() {
-                        assert_ne!(next_state, cur_state);
-                        let cond = e.to_token_stream().to_string();
-                        if cond != else_stmt {
-                            // if cond{state=next_state;continue 'genloop;}
-                            loops.push_str(&format!(
-                                "if {}{{ {}={};continue 'genloop;}}",
-                                cond, state_name, next_state
-                            ));
-                        } else {
-                            // state=next_state;
+                if !is_unused_state {
+                    let is_predefined_stmt: bool = self.predefined_stmt.contains(&stmt_str);
+                    if !is_predefined_stmt && !is_yield_or_return {
+                        loops.push_str(&stmt_str);
+                    } else if node as u32 == self.final_node_idx {
+                        // out of the loop
+                        loops.push_str(&format!(
+                            "{}={};",
+                            state_name,
+                            self.cfg_graph.nodes.len() + 1
+                        ));
+                    }
+                    let mut i = self.cfg_graph.nodes[node].h;
+                    while i != u32::MAX {
+                        let next_node = self.cfg_graph.e[i as usize] as usize;
+                        let e = self.cfg_graph.edges[i as usize].clone();
+                        let next_state = project_to_state.get(&next_node).unwrap();
+                        let next_state_eliminated =
+                            self.eliminate_single_state(next_node, *next_state);
+                        // if next_state_eliminated!=*next_state{
+                        //     println!("before eliminate unused state:{}->{}",cur_state,next_state);
+                        //     println!("after eliminate unused state:{}->{}",cur_state,next_state_eliminated);
+                        // }
+                        let next_state = &next_state_eliminated;
+                        if e != nop_stmt() {
+                            assert_ne!(next_state, cur_state);
+                            let cond = e.to_token_stream().to_string();
+                            if cond != else_stmt {
+                                // if cond{state=next_state;continue 'genloop;}
+                                loops.push_str(&format!(
+                                    "if {}{{ {}={};continue 'genloop;}}",
+                                    cond, state_name, next_state
+                                ));
+                            } else {
+                                // state=next_state;
+                                loops.push_str(&format!("{}={};", state_name, next_state));
+                            }
+                        } else if is_yield_or_return {
+                            loops.push_str(&format!("{}={};", state_name, next_state));
+                            loops.push_str(&stmt_str);
+                        } else if next_state != cur_state {
                             loops.push_str(&format!("{}={};", state_name, next_state));
                         }
-                    } else if is_yield_or_return {
-                        loops.push_str(&format!("{}={};", state_name, next_state));
-                        loops.push_str(&stmt_str);
-                    } else if next_state != cur_state {
-                        loops.push_str(&format!("{}={};", state_name, next_state));
+                        i = self.cfg_graph.ne[i as usize];
                     }
-                    i = self.cfg_graph.ne[i as usize];
                 }
             }
             let mut i = self.cfg_graph.nodes[node as usize].h;

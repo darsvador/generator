@@ -67,12 +67,22 @@ fn test_generation() {
             }
     };
     let mut generator = Generator::new();
-    println!(
-        "{}",
-        generator
-            .gen_state_machines_tokenstream(f, "state", "Poll::Pending")
-            .to_string()
-    );
+    let state_machine_code = generator
+        .gen_state_machines_tokenstream(f, "state", "Poll::Pending")
+        .to_string();
+    let mut rs = fs::File::create("state_machines.rs").unwrap();
+    rs.write_all(state_machine_code.as_bytes()).unwrap();
+    if cfg!(target_os = "linux") {
+        use std::path::Path;
+        use std::process::Command;
+        if Path::new("/usr/bin/rustfmt").exists() {
+            Command::new("rustfmt")
+                .arg("state_machines.rs")
+                .output()
+                .expect("failed to run rustfmt");
+        }
+    }
+
     let cfg_state_graph = generator.get_cfg_state_graph();
     let mut cfg_dot = fs::File::create("cfg_state.dot").unwrap();
     cfg_dot.write_all(cfg_state_graph.as_bytes()).unwrap();
