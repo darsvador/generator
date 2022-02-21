@@ -54,6 +54,26 @@ fn get_expr_path_name(path: &syn::ExprPath) -> String {
     String::new()
 }
 
+pub(crate) fn is_co_yield_or_co_return_expr(expr: &syn::Expr) -> bool {
+    match expr {
+        Expr::Path(expr) => {
+            return is_co_expr(expr);
+        }
+        Expr::Call(e) => {
+            let res = e.attrs.is_empty();
+            if res {
+                match e.func.as_ref() {
+                    Expr::Path(expr) => {
+                        return is_co_expr(expr);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        _ => {}
+    }
+    false
+}
 pub(crate) fn is_yield_or_return(stmt: &syn::Stmt) -> bool {
     match stmt {
         Stmt::Semi(Expr::Path(expr), _) => {

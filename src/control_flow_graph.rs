@@ -1,6 +1,6 @@
 use crate::stmt::{
-    else_stmt, end_node_stmt, final_stmt, is_yield_or_return, nop_stmt, semi_token,
-    start_node_stmt, start_stmt,
+    else_stmt, end_node_stmt, final_stmt, is_co_yield_or_co_return_expr, is_yield_or_return,
+    nop_stmt, semi_token, start_node_stmt, start_stmt,
 };
 use quote::ToTokens;
 use std::collections::{HashMap, HashSet};
@@ -283,14 +283,27 @@ impl CFG for CFGraph {
                 ret_idx = cur_idx;
             }
             _ => {
-                let idx;
-                if is_semi {
-                    idx = self.add_node(Stmt::Semi(expr.clone(), semi_token()));
+                if is_co_yield_or_co_return_expr(expr) {
+                    let idx;
+                    if is_semi {
+                        idx = self.add_node(Stmt::Semi(expr.clone(), semi_token()));
+                    } else {
+                        idx = self.add_node(Stmt::Expr(expr.clone()));
+                    }
+                    self.add_cfg_edge(cur_idx, idx, nop_stmt());
+                    let end_st_idx = self.add_node(end_node_stmt());
+                    self.add_cfg_edge(idx, end_st_idx, nop_stmt());
+                    ret_idx = end_st_idx;
                 } else {
-                    idx = self.add_node(Stmt::Expr(expr.clone()));
+                    let idx;
+                    if is_semi {
+                        idx = self.add_node(Stmt::Semi(expr.clone(), semi_token()));
+                    } else {
+                        idx = self.add_node(Stmt::Expr(expr.clone()));
+                    }
+                    self.add_cfg_edge(cur_idx, idx, nop_stmt());
+                    ret_idx = idx;
                 }
-                self.add_cfg_edge(cur_idx, idx, nop_stmt());
-                ret_idx = idx;
             }
         }
         ret_idx

@@ -100,17 +100,33 @@ impl Generator {
         self.state_projections = self.cfg_graph.figure_out_projections();
         let mut unused_states = HashSet::new();
         let mut state_projections = self.state_projections.clone();
+        // insert all states
         for (_, state) in state_projections.iter() {
             unused_states.insert(*state);
         }
+        // update state_projections to a new state
         for (node, state) in state_projections.iter_mut() {
             *state = self.eliminate_single_state(*node, *state);
         }
+        // remove used states
         for (_, state) in state_projections.iter() {
             unused_states.remove(state);
         }
         self.state_projections = state_projections;
         self.unused_states = unused_states;
+        // Since zero is a global start state, we can't eliminate simply.
+        // Project zero to a new state, and update unused state.
+        if self.unused_states.contains(&0) {
+            // zero num node is always map to zero state.
+            let new_start_state = *self.state_projections.get(&0).unwrap();
+            for (_, v) in self.state_projections.iter_mut() {
+                if *v == new_start_state {
+                    *v = 0;
+                }
+            }
+            // zero state is now used.
+            self.unused_states.remove(&0);
+        }
     }
 
     fn eliminate_single_state(&self, mut node: usize, mut state: usize) -> usize {
