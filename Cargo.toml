@@ -1,6 +1,6 @@
 [package]
 name = "gentian"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["darsvador"]
 edition = "2018"
 exclude = [	"images/*" , "cfg_state.dot", "state_machines.rs"]

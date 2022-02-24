@@ -35,11 +35,14 @@ fn transform_to_state_machine(mut input: syn::ItemFn) -> proc_macro2::TokenStrea
     }
     input.attrs.clear();
     if ret_val.is_empty() {
-        println!("[gentian] found function state name: {}.", state_name);
+        println!(
+            "[gentian] found function `{}` state name: {}.",
+            input.sig.ident, state_name
+        );
     } else {
         println!(
-            "[gentian] found function state name: {}, function default return value is: {}.",
-            state_name, ret_val
+            "[gentian] found function `{}` state name: {}, function default return value is: {}.",
+            input.sig.ident, state_name, ret_val
         );
     }
     let mut generator = Generator::new();
