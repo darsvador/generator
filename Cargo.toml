@@ -1,7 +1,8 @@
 [package]
 name = "gentian"
-version = "0.1.6"
+version = "0.1.7"
 authors = ["darsvador"]
+documentation = "https://docs.rs/gentian"
 edition = "2018"
 exclude = [	"images/*" , "cfg_state.dot", "state_machines.rs"]
 readme = "./README.md"
