@@ -1,6 +1,5 @@
 use quote::ToTokens;
-use syn::parse_quote;
-use syn::Expr;
+use syn::{Expr, parse_quote};
 use syn::ItemFn;
 use syn::Stmt;
 
@@ -34,7 +33,7 @@ pub(crate) fn semi_token() -> syn::token::Semi {
     return syn::token::Semi::default();
 }
 
-fn is_co_expr(path: &syn::ExprPath) -> bool {
+fn is_co_expr_path(path: &syn::ExprPath) -> bool {
     let name = get_expr_path_name(path);
     return name == "co_yield" || name == "co_return";
 }
@@ -57,14 +56,14 @@ fn get_expr_path_name(path: &syn::ExprPath) -> String {
 pub(crate) fn is_co_yield_or_co_return_expr(expr: &syn::Expr) -> bool {
     match expr {
         Expr::Path(expr) => {
-            return is_co_expr(expr);
+            return is_co_expr_path(expr);
         }
         Expr::Call(e) => {
             let res = e.attrs.is_empty();
             if res {
                 match e.func.as_ref() {
                     Expr::Path(expr) => {
-                        return is_co_expr(expr);
+                        return is_co_expr_path(expr);
                     }
                     _ => {}
                 }
@@ -76,15 +75,15 @@ pub(crate) fn is_co_yield_or_co_return_expr(expr: &syn::Expr) -> bool {
 }
 pub(crate) fn is_yield_or_return(stmt: &syn::Stmt) -> bool {
     match stmt {
-        Stmt::Semi(Expr::Path(expr), _) => {
-            return is_co_expr(expr);
+        Stmt::Expr(Expr::Path(expr))|Stmt::Semi(Expr::Path(expr), _) => {
+            return is_co_expr_path(expr);
         }
-        Stmt::Semi(Expr::Call(e), _) => {
+        Stmt::Expr(Expr::Call(e))|Stmt::Semi(Expr::Call(e), _) => {
             let res = e.attrs.is_empty();
             if res {
                 match e.func.as_ref() {
                     Expr::Path(expr) => {
-                        return is_co_expr(expr);
+                        return is_co_expr_path(expr);
                     }
                     _ => {}
                 }
@@ -104,10 +103,40 @@ pub(crate) fn is_yield_or_return(stmt: &syn::Stmt) -> bool {
 pub(crate) fn transform_stmt_to_string(stmt: &syn::Stmt) -> (String, bool) {
     let mut is_yield_or_return = false;
     let stmt_str = match &stmt {
+        Stmt::Expr(Expr::Path(expr)) => {
+            let name = get_expr_path_name(expr);
+            if name == "co_return" || name == "co_yield" {
+                // no semi
+                return (String::from("return"), true);
+            }
+            stmt.to_token_stream().to_string()
+        }
         Stmt::Semi(Expr::Path(expr), _) => {
             let name = get_expr_path_name(expr);
             if name == "co_return" || name == "co_yield" {
                 return (String::from("return;"), true);
+            }
+            stmt.to_token_stream().to_string()
+        }
+        Stmt::Expr(Expr::Call(e)) => {
+            let res = e.attrs.is_empty();
+            if res {
+                match e.func.as_ref() {
+                    Expr::Path(expr) => {
+                        let name = get_expr_path_name(expr);
+                        if name == "co_return" || name == "co_yield" {
+                            // no semi
+                            return (
+                                format!(
+                                    "return {}",
+                                    e.args.last().unwrap().to_token_stream().to_string()
+                                ),
+                                true,
+                            );
+                        }
+                    }
+                    _ => {}
+                }
             }
             stmt.to_token_stream().to_string()
         }
@@ -140,7 +169,7 @@ pub(crate) fn transform_stmt_to_string(stmt: &syn::Stmt) -> (String, bool) {
                 format!(";")
             }
         }
-        Stmt::Semi(Expr::Return(_), _) => {
+        Stmt::Expr(Expr::Return(_))|Stmt::Semi(Expr::Return(_), _) => {
             is_yield_or_return = true;
             stmt.to_token_stream().to_string()
         }

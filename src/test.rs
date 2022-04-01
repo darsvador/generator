@@ -1,3 +1,4 @@
+
 #[test]
 fn test_generation() {
     use crate::generate_state_machines::Generator;
@@ -110,12 +111,24 @@ fn test_is_co_yield_or_co_return() {
         let nop: ItemFn = parse_quote! {fn nop(){co_yield;}};
         return nop.block.stmts[0].clone();
     }
+    fn co_yield_no_semi() -> syn::Stmt {
+        let nop: ItemFn = parse_quote! {fn nop(){co_yield}};
+        return nop.block.stmts[0].clone();
+    }
     fn co_return_no_arg() -> syn::Stmt {
         let nop: ItemFn = parse_quote! {fn nop(){co_return;}};
         return nop.block.stmts[0].clone();
     }
+    fn co_return_no_arg_no_semi() -> syn::Stmt {
+        let nop: ItemFn = parse_quote! {fn nop(){co_return}};
+        return nop.block.stmts[0].clone();
+    }
     fn co_return_with_arg() -> syn::Stmt {
         let nop: ItemFn = parse_quote! {fn nop(){co_return(wtf);}};
+        return nop.block.stmts[0].clone();
+    }
+    fn co_return_with_arg_no_semi() -> syn::Stmt {
+        let nop: ItemFn = parse_quote! {fn nop(){co_return(wtf)}};
         return nop.block.stmts[0].clone();
     }
     let stmt = co_yield();
@@ -124,4 +137,11 @@ fn test_is_co_yield_or_co_return() {
     assert_eq!(is_yield_or_return(&stmt), true);
     let stmt = co_return_with_arg();
     assert_eq!(is_yield_or_return(&stmt), true);
+    let stmt = co_yield_no_semi();
+    assert_eq!(is_yield_or_return(&stmt), true);
+    let stmt = co_return_no_arg_no_semi();
+    assert_eq!(is_yield_or_return(&stmt), true);
+    let stmt = co_return_with_arg_no_semi();
+    assert_eq!(is_yield_or_return(&stmt), true);
+
 }
