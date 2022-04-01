@@ -1,7 +1,4 @@
-use crate::stmt::{
-    else_stmt, end_node_stmt, final_stmt, is_co_yield_or_co_return_expr, is_yield_or_return,
-    nop_stmt, semi_token, start_node_stmt, start_stmt,
-};
+use crate::stmt::{else_stmt, end_node_stmt, final_stmt, is_co_yield_or_co_return_expr, is_yield_or_return, nop_stmt, semi_token, start_node_stmt, start_stmt};
 use quote::ToTokens;
 use std::collections::{HashMap, HashSet};
 use syn::Expr;
@@ -131,6 +128,13 @@ impl CFG for CFGraph {
         final_idx: u32,
         loop_label_node_id: &mut Vec<LoopLabel>,
     ) -> u32 {
+        #[cfg(feature = "co_await")]
+        {
+            if crate::stmt::is_co_await_stmt(stmt){
+                let new_stmt = crate::stmt::transform_co_await_stmt(stmt);
+                return self.proc_stmt(&new_stmt,cur_idx,final_idx,loop_label_node_id);
+            }
+        }
         match stmt {
             Stmt::Local(_) => {
                 let idx = self.add_node(stmt.clone());

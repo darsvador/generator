@@ -1,4 +1,3 @@
-
 #[test]
 fn test_generation() {
     use crate::generate_state_machines::Generator;
@@ -143,5 +142,29 @@ fn test_is_co_yield_or_co_return() {
     assert_eq!(is_yield_or_return(&stmt), true);
     let stmt = co_return_with_arg_no_semi();
     assert_eq!(is_yield_or_return(&stmt), true);
+}
+#[cfg(feature = "co_await")]
+#[test]
+fn test_co_await(){
+    use crate::stmt::{is_co_await_stmt,transform_co_await_stmt};
+    use quote::ToTokens;
+    use syn::parse_quote;
+    use syn::ItemFn;
 
+    fn co_await_1() -> syn::Stmt {
+        let nop: ItemFn = parse_quote! {fn nop(){self.x=co_await(wtf);}};
+        return nop.block.stmts[0].clone();
+    }
+    let stmt = co_await_1();
+    assert!(is_co_await_stmt(&stmt));
+    let new_stmt = transform_co_await_stmt(&stmt);
+    println!("{}",new_stmt.to_token_stream().to_string());
+    fn co_await_2() -> syn::Stmt {
+        let nop: ItemFn = parse_quote! {fn nop(){co_await(wtf);}};
+        return nop.block.stmts[0].clone();
+    }
+    let stmt = co_await_2();
+    assert!(is_co_await_stmt(&stmt));
+    let new_stmt = transform_co_await_stmt(&stmt);
+    println!("{}",new_stmt.to_token_stream().to_string());
 }

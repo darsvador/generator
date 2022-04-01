@@ -11,6 +11,25 @@
 //!  * The resume point is defined immediately following the statement.
 //!  * Same as rust `return` semantics, it returns from the function immediately.
 //!
+//! # `co_await` statement
+//!  It's a syntax sugar for `co_yield` or `co_return` with `std::task::Poll`.
+//!  ````ignore
+//!  co_await(some_poll_func());
+//!  ````
+//!  is equivalent to
+//!  ````ignore
+//!  loop{
+//!    let tmp=some_poll_func();
+//!    if tmp.is_ready(){
+//!        break;
+//!    }
+//!    co_yield(Poll::Pending);
+//!  }
+//!  ````
+//!  This divides into two logical steps:
+//!  * `co_await` save the current state of the coroutine.
+//!  * The resume point is defined immediately following the statement and if and only if the waited poll function is ready.
+//!
 //! # `return` statement
 //!  This type of statement divides into two logical steps:
 //!  * `return` sets the coroutine state to indicate termination.
